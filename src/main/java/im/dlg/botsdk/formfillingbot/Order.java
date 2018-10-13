@@ -1,4 +1,4 @@
-package me.blueat.dialog.bot;
+package im.dlg.botsdk.formfillingbot;
 
 import im.dlg.botsdk.Bot;
 import im.dlg.botsdk.domain.Peer;

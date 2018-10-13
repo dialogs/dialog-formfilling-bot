@@ -4,8 +4,8 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>me.blueat</groupId>
-    <artifactId>dialog.bot</artifactId>
+    <groupId>im.dlg.botsdk</groupId>
+    <artifactId>formfillingbot</artifactId>
     <version>1.0</version>
 
     <repositories>
@@ -14,6 +14,10 @@
         <name>dialog repo</name>
         <url>http://dialog.bintray.com/maven</url>
     </repository>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
     </repositories>
 
     <dependencies>
@@ -68,6 +72,11 @@
             <artifactId>google-api-services-sheets</artifactId>
             <version>v4-rev516-1.23.0</version>
         </dependency>
+        <dependency>
+            <groupId>com.github.dialogs</groupId>
+            <artifactId>java-bot-sdk</artifactId>
+            <version>33d09ae</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -95,7 +104,7 @@
                         <configuration>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>me.blueat.dialog.bot.GoogleSheetBot</mainClass>
+                                    <mainClass>im.dlg.botsdk.formfillingbot.FormfillingBot</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>

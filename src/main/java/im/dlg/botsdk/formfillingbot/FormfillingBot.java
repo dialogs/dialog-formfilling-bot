@@ -1,4 +1,4 @@
-package me.blueat.dialog.bot;
+package im.dlg.botsdk.formfillingbot;
 
 import im.dlg.botsdk.Bot;
 import im.dlg.botsdk.domain.interactive.InteractiveAction;
@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 
-public class GoogleSheetBot {
+public class FormfillingBot {
     public static void main(String[] args) throws InterruptedException, ExecutionException {
 
         final String OrderStartMessage = "Hey";

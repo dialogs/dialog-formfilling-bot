@@ -1,4 +1,4 @@
-package me.blueat.dialog.bot;
+package im.dlg.botsdk.formfillingbot;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
