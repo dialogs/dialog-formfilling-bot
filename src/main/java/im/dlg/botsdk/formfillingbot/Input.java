@@ -4,24 +4,38 @@ import im.dlg.botsdk.Bot;
 import im.dlg.botsdk.domain.Peer;
 import im.dlg.botsdk.domain.interactive.InteractiveGroup;
 
-public class Order {
+import java.text.SimpleDateFormat;
+
+public class Input {
     private String message;
     private InteractiveGroup interactiveGroup;
     private String actionName;
     private int type;
+    private SimpleDateFormat simpleDateFormat;
 
-    public final static int ORDER_INPUT = 1;
-    public final static int ORDER_INTERACTIVE = 2;
+    public final static int INPUT_STRING = 1;
+    public final static int INPUT_INTERACTIVE = 2;
+    public final static int INPUT_DATE = 3;
+    public final static int INPUT_USERNAME = 4;
 
-    public Order(String message) {
+    public Input(String message) {
         this.message = message;
         this.type = 1;
     }
 
-    public Order(InteractiveGroup interactiveGroup, String actionName) {
+    public Input(InteractiveGroup interactiveGroup, String actionName) {
         this.interactiveGroup = interactiveGroup;
         this.actionName = actionName;
         this.type = 2;
+    }
+
+    public Input(int type, String format) {
+        this.type = type;
+        this.simpleDateFormat = new SimpleDateFormat(format);
+    }
+
+    public Input(int type) {
+        this.type = type;
     }
 
     public String getMessage() {
@@ -40,11 +54,15 @@ public class Order {
         return actionName;
     }
 
+    public SimpleDateFormat getSimpleDateFormat() {
+        return simpleDateFormat;
+    }
+
     public void sendOrder(Bot bot, Peer peer) {
-        if (this.getType() == Order.ORDER_INPUT) {
+        if (this.getType() == Input.INPUT_STRING) {
             bot.messaging().send(peer, this.getMessage());
         }
-        else if (this.getType() == Order.ORDER_INTERACTIVE) {
+        else if (this.getType() == Input.INPUT_INTERACTIVE) {
             bot.interactiveApi().send(peer, this.getInteractiveGroup());
         }
     }

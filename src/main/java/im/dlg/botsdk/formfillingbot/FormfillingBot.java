@@ -1,54 +1,90 @@
 package im.dlg.botsdk.formfillingbot;
 
+import com.google.gson.Gson;
 import im.dlg.botsdk.Bot;
+import im.dlg.botsdk.domain.Peer;
+import im.dlg.botsdk.domain.User;
 import im.dlg.botsdk.domain.interactive.InteractiveAction;
 import im.dlg.botsdk.domain.interactive.InteractiveGroup;
 import im.dlg.botsdk.domain.interactive.InteractiveSelect;
 import im.dlg.botsdk.domain.interactive.InteractiveSelectOption;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 
-public class FormfillingBot {
-    public static void main(String[] args) throws InterruptedException, ExecutionException {
+public class FormFillingBot {
 
-        final String OrderStartMessage = "Hey";
-        ConcurrentHashMap<Integer, OrderList> orderListMap = new ConcurrentHashMap<>();
+    private static ConcurrentHashMap<Integer, Answer> answerMap = new ConcurrentHashMap<>();
+    private static Map<String,Object> config = new HashMap<>();
 
-        Bot bot = Bot.start("df8c6600c2a45b711e097fd9e5e7f3cfee025e41").get();
+    public static void main(String[] args) throws FileNotFoundException, InterruptedException, ExecutionException {
+        if (args.length != 1) {
+            throw new FileNotFoundException("config.json");
+        }
+
+        Gson gson = new Gson();
+        config = (Map<String,Object>) gson.fromJson(new FileReader(args[0]), config.getClass());
+        Form userForm = Form.mapToForm((Map) config.get("form"));
+
+        Bot bot = Bot.start((String)config.get("bot_token")).get();
 
         bot.messaging().onMessage(message ->
             bot.users().get(message.getSender()).thenAccept(userOpt -> userOpt.ifPresent(user -> {
-                int senderId = message.getSender().getId();
+                Peer sender = message.getSender();
+                int senderId = sender.getId();
 
-                if (OrderStartMessage.equals(message.getText())) {
-                    orderListMap.put(senderId, createOrderForm(user.getName()));
+                if (userForm.getCallMessage().equals(message.getText())) {
+                    Answer answer = new Answer(user.getName());
+                    answerMap.put(senderId, answer);
                 }
 
-                if (orderListMap.containsKey(senderId)) {
-                    OrderList orderList = orderListMap.get(senderId);
+                if (answerMap.containsKey(senderId)) {
+                    Answer answer = answerMap.get(senderId);
+                    int step = answer.getStep();
 
-                    if (orderList.getStep() > 0 && orderList.getPrevOrder().getType() == Order.ORDER_INPUT) {
-                        orderList.setOrderAnswer(message.getText());
+                    if (answer.getStep() > 0 && userForm.getPrevInput(step).getType() == Input.INPUT_STRING) {
+                        answer.setAnswer(message.getText());
                     }
 
-                    if (orderList.isComplete()) {
-                        bot.messaging().send(message.getSender(), orderList.getCompleteMessage());
+                    if (userForm.isComplete(step)) {
+                        bot.messaging().send(sender, userForm.getWaitMessage());
 
                         try {
-                            GoogleSheet.updateSpreadSheet(orderListMap.get(senderId).getSheetData());
+                            GoogleSheet.updateSpreadSheet(answer.getAnswerList(), (String)config.get("google_auth"), (String)config.get("spreadsheet_id"),  (String)config.get("spreadsheet_name"), (String)config.get("spreadsheet_range"));
+                            bot.messaging().send(sender, userForm.getCompleteMessage());
                         }
                         catch (Exception e) {
                             e.printStackTrace();
+                            bot.messaging().send(sender, userForm.getFailMessage());
                         }
 
-                        orderListMap.remove(senderId);
+                        answerMap.remove(senderId);
                     }
                     else {
-                        orderList.getCurrentOrder().sendOrder(bot, message.getSender());
-                        orderList.nextStep();
+                        step = Form.inputDateNUser(userForm, step, answer, user);
+
+                        if (userForm.isComplete(step)) {
+                            bot.messaging().send(sender, userForm.getWaitMessage());
+
+                            try {
+                                GoogleSheet.updateSpreadSheet(answer.getAnswerList(), (String)config.get("google_auth"), (String)config.get("spreadsheet_id"),  (String)config.get("spreadsheet_name"), (String)config.get("spreadsheet_range"));
+                                bot.messaging().send(sender, userForm.getCompleteMessage());
+                            }
+                            catch (Exception e) {
+                                e.printStackTrace();
+                                bot.messaging().send(sender, userForm.getFailMessage());
+                            }
+
+                            answerMap.remove(senderId);
+                        }
+                        else {
+                            userForm.getCurrentInput(step).sendOrder(bot, sender);
+                            answer.nextStep();
+                        }
                     }
                 }
             }))
@@ -56,69 +92,55 @@ public class FormfillingBot {
 
         bot.interactiveApi().onEvent(event ->
             bot.users().get(event.getPeer()).thenAccept(userOpt -> userOpt.ifPresent(user -> {
-                int senderId = event.getPeer().getId();
+                Peer sender = event.getPeer();
+                int senderId = sender.getId();
 
-                System.out.println(event.getId());
-                if (orderListMap.containsKey(senderId)) {
-                    OrderList orderList = orderListMap.get(senderId);
+                if (answerMap.containsKey(senderId)) {
+                    Answer answer = answerMap.get(senderId);
+                    int step = answer.getStep();
 
-                    if (orderList.getPrevOrder().getType() == Order.ORDER_INTERACTIVE && orderList.getPrevOrder().getActionName().equals(event.getId())) {
-                        orderList.setOrderAnswer(event.getValue());
+                    if (userForm.getPrevInput(step).getType() == Input.INPUT_INTERACTIVE && userForm.getPrevInput(step).getActionName().equals(event.getId())) {
+                        answer.setAnswer(event.getValue());
                     }
 
-                    if (orderList.isComplete()) {
-                        bot.messaging().send(event.getPeer(), orderList.getCompleteMessage());
+                    if (userForm.isComplete(step)) {
+                        bot.messaging().send(sender, userForm.getWaitMessage());
 
                         try {
-                            GoogleSheet.updateSpreadSheet(orderListMap.get(senderId).getSheetData());
+                            GoogleSheet.updateSpreadSheet(answer.getAnswerList(), (String)config.get("google_auth"), (String)config.get("spreadsheet_id"),  (String)config.get("spreadsheet_name"), (String)config.get("spreadsheet_range"));
+                            bot.messaging().send(sender, userForm.getCompleteMessage());
                         }
                         catch (Exception e) {
                             e.printStackTrace();
+                            bot.messaging().send(sender, userForm.getFailMessage());
                         }
-
-                        orderListMap.remove(senderId);
+                        answerMap.remove(senderId);
                     }
                     else {
-                        orderList.getCurrentOrder().sendOrder(bot, event.getPeer());
-                        orderList.nextStep();
+                        step = Form.inputDateNUser(userForm, step, answer, user);
+
+                        if (userForm.isComplete(step)) {
+                            bot.messaging().send(sender, userForm.getWaitMessage());
+
+                            try {
+                                GoogleSheet.updateSpreadSheet(answer.getAnswerList(), (String)config.get("google_auth"), (String)config.get("spreadsheet_id"),  (String)config.get("spreadsheet_name"), (String)config.get("spreadsheet_range"));
+                                bot.messaging().send(sender, userForm.getCompleteMessage());
+                            }
+                            catch (Exception e) {
+                                e.printStackTrace();
+                                bot.messaging().send(sender, userForm.getFailMessage());
+                            }
+                            answerMap.remove(senderId);
+                        }
+                        else {
+                            userForm.getCurrentInput(step).sendOrder(bot, sender);
+                            answer.nextStep();
+                        }
                     }
                 }
             }))
         );
 
         bot.await();
-    }
-
-    public static OrderList createOrderForm(String user) {
-        Order first = new Order("Hi! Send me what you need in the office and I will create the purchase request.");
-
-        List<InteractiveSelectOption> secondSelectOptions = new ArrayList<>();
-        secondSelectOptions.add(new InteractiveSelectOption("Food", "Food"));
-        secondSelectOptions.add(new InteractiveSelectOption("Not Food", "Not Food"));
-
-        ArrayList<InteractiveAction> secondActions = new ArrayList<>();
-        InteractiveSelect secondInteractiveSelect = new InteractiveSelect("Choose", "Choose", secondSelectOptions);
-        secondActions.add(new InteractiveAction("action_1", secondInteractiveSelect));
-        InteractiveGroup secondInteractiveGroup = new InteractiveGroup("Is it food or not food?", "", secondActions);
-
-        Order second = new Order(secondInteractiveGroup, "action_1");
-
-        List<InteractiveSelectOption> thirdSelectOptions = new ArrayList<>();
-        thirdSelectOptions.add(new InteractiveSelectOption("DF", "DF"));
-        thirdSelectOptions.add(new InteractiveSelectOption("Pok", "Pok"));
-        thirdSelectOptions.add(new InteractiveSelectOption("Nov", "Nov"));
-        thirdSelectOptions.add(new InteractiveSelectOption("Znam", "Znam"));
-
-        ArrayList<InteractiveAction> thirdActions = new ArrayList<>();
-        InteractiveSelect thirdInteractiveSelect = new InteractiveSelect("Choose", "Choose", thirdSelectOptions);
-        thirdActions.add(new InteractiveAction("action_2", thirdInteractiveSelect));
-        InteractiveGroup thirdInteractiveGroup = new InteractiveGroup("In which office is this order?", "", thirdActions);
-
-        Order third = new Order(thirdInteractiveGroup, "action_2");
-
-        OrderList order = new OrderList(user, first, second, third);
-        order.setCompleteMessage("Thank you, your order is placed and will be purchased soon.\nThe office administrator will contact you as soon as the order arrives at the office.");
-
-        return order;
     }
 }
