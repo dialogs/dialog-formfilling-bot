@@ -82,7 +82,7 @@ public class FormFillingBot {
                             answerMap.remove(senderId);
                         }
                         else {
-                            userForm.getCurrentInput(step).sendOrder(bot, sender);
+                            userForm.getCurrentInput(step).sendInput(bot, sender);
                             answer.nextStep();
                         }
                     }
@@ -133,7 +133,7 @@ public class FormFillingBot {
                             answerMap.remove(senderId);
                         }
                         else {
-                            userForm.getCurrentInput(step).sendOrder(bot, sender);
+                            userForm.getCurrentInput(step).sendInput(bot, sender);
                             answer.nextStep();
                         }
                     }

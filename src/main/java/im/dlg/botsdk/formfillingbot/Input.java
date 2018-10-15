@@ -58,7 +58,7 @@ public class Input {
         return simpleDateFormat;
     }
 
-    public void sendOrder(Bot bot, Peer peer) {
+    public void sendInput(Bot bot, Peer peer) {
         if (this.getType() == Input.INPUT_STRING) {
             bot.messaging().send(peer, this.getMessage());
         }
